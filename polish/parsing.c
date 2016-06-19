@@ -52,7 +52,7 @@ lval* lval_sym(char* s) {
   lval* v = malloc(sizeof(lval));
   v->type = LVAL_SYM;
   v->sym = malloc(strlen(s) + 1);
-  strcpy(v-> sym, s);
+  strcpy(v->sym, s);
   return v;
 }
 
@@ -183,11 +183,11 @@ int main(int argc, char** argv) {
         "number : /-?[0-9]+/ ; \
         symbol : '+' | '-' | '*' | '/' | '%' ; \
         sexpr: '(' <expr>* ')' ; \
-        expr : <number> | '(' <operator> <expr>+ ')' ; \
-        jerispy : /^/ <operator> <expr>+ /$/ ; \
+        expr : <number> | '(' <symbol> <expr>+ ')' ; \
+        jerispy : /^/ <symbol> <expr>+ /$/ ; \
       ",
       Number, Symbol, Sexpr, Expr, Jerispy);
-  puts("Jerispy Version 0.0.1");
+  puts("Jerispy Version 0.0.3");
   puts("Press Ctrl+c to exit\n");
 
   //Loop for all time
@@ -210,7 +210,6 @@ int main(int argc, char** argv) {
       mpc_err_print(r.error);
       mpc_err_delete(r.error);
     }
-    //Oh snap. I guess this is why we threw in stdlib.
     free(input);
   }
 
