@@ -88,7 +88,7 @@ lval* lval_read_num(mpc_ast_t* t) {
 lval* lval_add(lval* v, lval* x) { 
   v->count++;
   v->cell = realloc(v->cell, sizeof(lval*) * v->count);
-  v->cell[v->count - 1] = x;
+  v->cell[v->count-1] = x;
   return v;
 }
 
@@ -106,6 +106,7 @@ lval* lval_read(mpc_ast_t* t) {
     if(strcmp(t->children[i]->contents, ")") == 0) { continue; }
     if(strcmp(t->children[i]->contents, "{") == 0) { continue; }
     if(strcmp(t->children[i]->contents, "}") == 0) { continue; }
+    if(strcmp(t->children[i]->tag, "regex") == 0) { continue; }
     x = lval_add(x, lval_read(t->children[i]));
   }
   return x;
@@ -120,7 +121,7 @@ void lval_expr_print(lval* v, char open, char close) {
   for(int i = 0; i < v->count; i++) {
     lval_print(v->cell[i]);
 
-    if(i != (v->count - 1)) {
+    if(i != (v->count-1)) {
       putchar(' ');
     }
   }
@@ -183,8 +184,8 @@ int main(int argc, char** argv) {
         "number : /-?[0-9]+/ ; \
         symbol : '+' | '-' | '*' | '/' | '%' ; \
         sexpr: '(' <expr>* ')' ; \
-        expr : <number> | '(' <symbol> <expr>+ ')' ; \
-        jerispy : /^/ <symbol> <expr>+ /$/ ; \
+        expr : <number> | <symbol> | <sexpr> ; \
+        jerispy : /^/ <expr>* /$/ ; \
       ",
       Number, Symbol, Sexpr, Expr, Jerispy);
   puts("Jerispy Version 0.0.3");
@@ -201,7 +202,7 @@ int main(int argc, char** argv) {
     //printf("Snark snark: %s Don't need dat snark\n", input);
     mpc_result_t r;
     if (mpc_parse("<stdin>", input, Jerispy, &r)) {
-      //mpc_ast_print(r.output);
+      mpc_ast_print(r.output);
       lval* x = lval_read(r.output);
       lval_println(x);
       lval_del(x);
