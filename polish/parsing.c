@@ -139,6 +139,96 @@ void lval_print(lval* v) {
 
 void lval_println(lval* v) { lval_print(v); putchar('\n'); }
 
+lval* lval_eval(lval* v);
+lval* lval_pop(lval* v, int idx);
+lval* lval_take(lval* v, int idx);
+lval* builtin_op(lval* a, char* op);
+
+lval* lval_eval_sexpr(lval* v) {
+  //eval children
+  for (int i = 0; i < v->count; i++) {
+    v->cell[i] = lval_eval(v->cell[i]);
+  }
+
+  //check for err
+  for (int i = 0; i < v->count; i++) {
+    if (v->cell[i]->type == LVAL_ERR) { return lval_take(v, i); }
+  }
+
+  //empty expr
+  if(v->count == 0) { return v; }
+  //single expr (expr)
+  if(v->count == 1) { return lval_take(v, 0); }
+
+  //first elem is a symbol?
+  lval* f = lval_pop(v, 0);
+  if (f->type != LVAL_SYM) {
+    lval_del(f); lval_del(v);
+    return lval_err("S-expression does not start with symbol!");
+  }
+
+  lval* result = builtin_op(v, f->sym);
+  lval_del(f);
+  return result;
+}
+
+lval* lval_eval(lval* v) {
+  //evaluate s-expr
+  if(v->type == LVAL_SEXPR) { return lval_eval_sexpr(v); }
+  //everything else passes through
+  return v;
+}
+
+lval* lval_pop(lval* v, int idx) {
+  lval* x = v->cell[idx];
+  //shift memory after the item at idx over the top
+  memmove(&v->cell[idx], &v->cell[idx+1],
+      sizeof(lval*) * (v->count-idx-1));
+
+  v->count--;
+
+  v->cell = realloc(v->cell, sizeof(lval*) * v->count);
+  return x;
+}
+
+lval* lval_take(lval* v, int idx) {
+  lval* x = lval_pop(v, idx);
+  lval_del(v);
+  return x;
+}
+
+lval* builtin_op(lval* a, char* op) {
+  for (int i = 0; i < a->count; i++) {
+    if (a->cell[i]->type != LVAL_NUM) {
+      lval_del(a);
+      return lval_err("Cannot operate on non-number!");
+    }
+  }
+  
+  lval* x = lval_pop(a, 0);
+
+  if((strcmp(op, "-") == 0) && a->count == 0) {
+    x->num = -x->num;
+  }
+
+  while(a->count > 0) {
+    lval* y = lval_pop(a, 0);
+
+    if(strcmp(op, "+") == 0) { x->num += y->num; }
+    if(strcmp(op, "-") == 0) { x->num -= y->num; }
+    if(strcmp(op, "*") == 0) { x->num *= y->num; }
+    if(strcmp(op, "/") == 0) {
+      if(y->num == 0) { 
+        lval_del(x); lval_del(y);
+        x = lval_err("Division by zero!"); break;
+      }
+      x->num /= y->num;
+    }
+    lval_del(y);
+  }
+  lval_del(a); return x;
+}
+
 /*
 lval eval_op(lval x, char* op, lval y) {
   if (x.type == LVAL_ERR) { return x; }
@@ -203,7 +293,7 @@ int main(int argc, char** argv) {
     mpc_result_t r;
     if (mpc_parse("<stdin>", input, Jerispy, &r)) {
       mpc_ast_print(r.output);
-      lval* x = lval_read(r.output);
+      lval* x = lval_eval(lval_read(r.output));
       lval_println(x);
       lval_del(x);
       mpc_ast_delete(r.output);
